@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NIDS — Network Intrusion Detection</title>
+<style>
+  :root {
+    --bg:       #0a0f1e;
+    --surface:  #111827;
+    --border:   #1f2d45;
+    --accent:   #00e5ff;
+    --danger:   #ff4d4d;
+    --safe:     #00e096;
+    --muted:    #4a6080;
+    --text:     #e2eaf6;
+    --subtext:  #7a90b0;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --font:      'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 20px; height: 20px; }
+  .logo-text { font-size: 1.1rem; font-weight: 700; letter-spacing: .02em; }
+  .logo-sub  { font-size: .72rem; color: var(--subtext); margin-top: 1px; }
+
+  .status-dot {
+    display: flex; align-items: center; gap: 7px;
+    font-size: .8rem; color: var(--subtext);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s;
+  }
+  .dot.live   { background: var(--safe); box-shadow: 0 0 8px var(--safe); }
+  .dot.error  { background: var(--danger); }
+
+  /* ── Layout ─────────────────────────────────── */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    height: calc(100vh - 65px);
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ────────────────────────────────── */
+  aside {
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-title {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--subtext);
+    margin-bottom: 10px;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .tab {
+    flex: 1; padding: 7px 10px;
+    border: none; border-radius: 6px;
+    background: transparent;
+    color: var(--subtext);
+    font-size: .82rem; font-family: var(--font);
+    cursor: pointer; transition: all .2s;
+  }
+  .tab.active {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  /* Input panel */
+  .input-panel { display: none; }
+  .input-panel.active { display: block; }
+
+  .field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: .73rem;
+    color: var(--subtext);
+  }
+
+  input[type="number"], input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    padding: 7px 10px;
+    width: 100%;
+    transition: border-color .2s;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+
+  /* Preset buttons */
+  .presets {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .preset-btn {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--subtext);
+    font-size: .75rem; font-family: var(--font);
+    cursor: pointer; transition: all .2s;
+  }
+  .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* File upload */
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+  .upload-area:hover { border-color: var(--accent); }
+  .upload-area p { font-size: .82rem; color: var(--subtext); margin-top: 8px; }
+  .upload-area span { font-size: .72rem; color: var(--muted); }
+
+  /* Submit button */
+  .btn-primary {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    font-size: .9rem;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+  }
+  .btn-primary:hover { opacity: .9; }
+  .btn-primary:active { transform: scale(.98); }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── Right panel ─────────────────────────────── */
+  section.content {
+    padding: 28px 32px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* Result card */
+  .result-card {
+    border-radius: 14px;
+    padding: 28px 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: all .4s;
+  }
+  .result-card.benign { border-color: var(--safe);   background: rgba(0,224,150,.05); }
+  .result-card.attack { border-color: var(--danger); background: rgba(255,77,77,.05); }
+  .result-card.hidden { opacity: 0; pointer-events: none; height: 0; padding: 0; overflow: hidden; }
+
+  .result-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.8rem;
+  }
+  .result-icon.benign { background: rgba(0,224,150,.15); }
+  .result-icon.attack { background: rgba(255,77,77,.15); }
+
+  .result-label {
+    font-size: 2rem; font-weight: 800; letter-spacing: .03em;
+  }
+  .result-label.benign { color: var(--safe); }
+  .result-label.attack { color: var(--danger); }
+
+  .result-meta { font-size: .82rem; color: var(--subtext); margin-top: 4px; }
+
+  .confidence-bar {
+    flex: 1;
+  }
+  .confidence-bar .bar-label {
+    font-size: .72rem; color: var(--subtext); margin-bottom: 6px;
+    display: flex; justify-content: space-between;
+  }
+  .bar-track {
+    height: 8px; border-radius: 4px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 4px;
+    background: var(--safe);
+    width: 0; transition: width .6s ease;
+  }
+  .bar-fill.attack { background: var(--danger); }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .stat-val  { font-size: 2rem; font-weight: 800; font-family: var(--font-mono); }
+  .stat-val.green { color: var(--safe); }
+  .stat-val.red   { color: var(--danger); }
+  .stat-val.blue  { color: var(--accent); }
+  .stat-lbl  { font-size: .75rem; color: var(--subtext); margin-top: 4px; }
+
+  /* History table */
+  .history-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .history-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: .78rem;
+    font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .clear-btn {
+    background: none; border: none;
+    color: var(--muted); font-size: .72rem;
+    cursor: pointer; font-family: var(--font);
+  }
+  .clear-btn:hover { color: var(--subtext); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    font-size: .7rem; text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 20px;
+    font-size: .8rem;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    font-family: var(--font-mono);
+  }
+  tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px; border-radius: 20px;
+    font-size: .7rem; font-weight: 700;
+    font-family: var(--font);
+  }
+  .badge.benign { background: rgba(0,224,150,.12); color: var(--safe); }
+  .badge.attack { background: rgba(255,77,77,.12);  color: var(--danger); }
+
+  /* Spinner */
+  .spinner {
+    display: none;
+    width: 20px; height: 20px;
+    border: 2px solid rgba(0,229,255,.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 0 auto;
+  }
+  .spinner.active { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: .82rem;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 20 20" fill="black"><path d="M10 2L2 7v6l8 5 8-5V7L10 2zm0 2.5l5.5 3.5-5.5 3.5L4.5 8 10 4.5zM3 9.1l6.5 4.1v4.3L3 13.4V9.1zm8 8.4v-4.3L17 9.1v4.3l-6 3.8z"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">NIDS Sentinel</div>
+      <div class="logo-sub">XGBoost · CICIDS2017 · DDoS Detection</div>
+    </div>
+  </div>
+  <div class="status-dot">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">Connecting…</span>
+  </div>
+</header>
+
+<main>
+  <!-- ── Sidebar ─────────────────────────────── -->
+  <aside>
+    <div>
+      <p class="section-title">Input Mode</p>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('manual')">Manual</button>
+        <button class="tab"        onclick="switchTab('csv')">CSV Upload</button>
+      </div>
+    </div>
+
+    <!-- Manual Tab -->
+    <div id="manualPanel" class="input-panel active">
+      <p class="section-title">Presets</p>
+      <div class="presets">
+        <button class="preset-btn" onclick="loadPreset('benign')">Normal Traffic</button>
+        <button class="preset-btn" onclick="loadPreset('ddos')">DDoS Pattern</button>
+        <button class="preset-btn" onclick="clearForm()">Clear</button>
+      </div>
+
+      <br/>
+      <p class="section-title">Key Features</p>
+      <div class="field-group">
+        <label>Destination Port<input type="number" id="f_DestinationPort" value="80" /></label>
+        <label>Flow Duration (µs)<input type="number" id="f_FlowDuration" value="50000" /></label>
+        <label>Total Fwd Packets<input type="number" id="f_TotalFwdPackets" value="10" /></label>
+        <label>Total Bwd Packets<input type="number" id="f_TotalBwdPackets" value="8" /></label>
+        <label>Flow Bytes/s<input type="number" id="f_FlowBytess" value="2500" /></label>
+        <label>Flow Packets/s<input type="number" id="f_FlowPacketss" value="500" /></label>
+        <label>Fwd Packets/s<input type="number" id="f_FwdPacketss" value="300" /></label>
+        <label>Bwd Packets/s<input type="number" id="f_BwdPacketss" value="200" /></label>
+        <label>SYN Flag Count<input type="number" id="f_SYNFlagCount" value="1" /></label>
+        <label>ACK Flag Count<input type="number" id="f_ACKFlagCount" value="1" /></label>
+        <label>PSH Flag Count<input type="number" id="f_PSHFlagCount" value="0" /></label>
+        <label>RST Flag Count<input type="number" id="f_RSTFlagCount" value="0" /></label>
+        <label>Avg Packet Size<input type="number" id="f_AveragePktSize" value="512" /></label>
+        <label>Packet Length Mean<input type="number" id="f_PacketLengthMean" value="512" /></label>
+      </div>
+      <p style="font-size:.7rem;color:var(--muted);margin-bottom:12px;">
+        All remaining features default to 0. Add more fields as needed.
+      </p>
+      <button class="btn-primary" id="predictBtn" onclick="predict()">
+        Analyse Traffic
+      </button>
+    </div>
+
+    <!-- CSV Tab -->
+    <div id="csvPanel" class="input-panel">
+      <p class="section-title">Batch CSV Analysis</p>
+      <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+        <div style="font-size:2rem">📂</div>
+        <p>Click to upload CSV</p>
+        <span>Must contain all 78 CICIDS2017 columns</span>
+      </div>
+      <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCSV(event)" />
+      <br/>
+      <button class="btn-primary" id="batchBtn" onclick="predictBatch()" disabled>
+        Run Batch Detection
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Content ─────────────────────────────── -->
+  <section class="content">
+
+    <!-- Result card -->
+    <div class="result-card hidden" id="resultCard">
+      <div class="result-icon" id="resultIcon">🛡️</div>
+      <div>
+        <div class="result-label" id="resultLabel">BENIGN</div>
+        <div class="result-meta" id="resultMeta">Single packet analysis</div>
+      </div>
+      <div class="confidence-bar">
+        <div class="bar-label">
+          <span>Confidence</span>
+          <span id="confPct">0%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" id="confBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val blue" id="totalCount">0</div>
+        <div class="stat-lbl">Total Analysed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val green" id="benignCount">0</div>
+        <div class="stat-lbl">Benign</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val red" id="attackCount">0</div>
+        <div class="stat-lbl">Attacks Detected</div>
+      </div>
+    </div>
+
+    <!-- Spinner -->
+    <div class="spinner" id="spinner"></div>
+
+    <!-- History -->
+    <div class="history-wrap">
+      <div class="history-header">
+        Detection Log
+        <button class="clear-btn" onclick="clearHistory()">Clear log</button>
+      </div>
+      <div id="historyBody">
+        <div class="empty">No detections yet. Analyse some traffic above.</div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<script>
+const API = "http://localhost:5000";
+
+let history = [];
+let stats   = { total: 0, benign: 0, attack: 0 };
+let csvRows = [];
+
+// ── Health check ─────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    const dot  = document.getElementById("statusDot");
+    const text = document.getElementById("statusText");
+    if (d.status === "ready") {
+      dot.className = "dot live";
+      text.textContent = "Backend online";
+    } else {
+      dot.className = "dot error";
+      text.textContent = "Model not loaded";
+    }
+  } catch {
+    document.getElementById("statusDot").className = "dot error";
+    document.getElementById("statusText").textContent = "Backend unreachable";
+  }
+}
+checkHealth();
+setInterval(checkHealth, 10000);
+
+// ── Tab switching ─────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach((t, i) => {
+    t.classList.toggle("active", (i === 0) === (tab === "manual"));
+  });
+  document.getElementById("manualPanel").classList.toggle("active", tab === "manual");
+  document.getElementById("csvPanel").classList.toggle("active",   tab === "csv");
+}
+
+// ── Presets ───────────────────────────────────────────────────
+const PRESETS = {
+  benign: {
+    DestinationPort: 443, FlowDuration: 120000, TotalFwdPackets: 25,
+    TotalBwdPackets: 22, FlowBytess: 3200, FlowPacketss: 320,
+    FwdPacketss: 160, BwdPacketss: 160, SYNFlagCount: 1, ACKFlagCount: 23,
+    PSHFlagCount: 4, RSTFlagCount: 0, AveragePktSize: 680, PacketLengthMean: 680,
+  },
+  ddos: {
+    DestinationPort: 80, FlowDuration: 800, TotalFwdPackets: 2000,
+    TotalBwdPackets: 1, FlowBytess: 950000, FlowPacketss: 125000,
+    FwdPacketss: 124900, BwdPacketss: 100, SYNFlagCount: 2000, ACKFlagCount: 0,
+    PSHFlagCount: 0, RSTFlagCount: 0, AveragePktSize: 60, PacketLengthMean: 60,
+  }
+};
+
+function loadPreset(name) {
+  const p = PRESETS[name];
+  const map = {
+    DestinationPort: "f_DestinationPort", FlowDuration: "f_FlowDuration",
+    TotalFwdPackets: "f_TotalFwdPackets", TotalBwdPackets: "f_TotalBwdPackets",
+    FlowBytess: "f_FlowBytess", FlowPacketss: "f_FlowPacketss",
+    FwdPacketss: "f_FwdPacketss", BwdPacketss: "f_BwdPacketss",
+    SYNFlagCount: "f_SYNFlagCount", ACKFlagCount: "f_ACKFlagCount",
+    PSHFlagCount: "f_PSHFlagCount", RSTFlagCount: "f_RSTFlagCount",
+    AveragePktSize: "f_AveragePktSize", PacketLengthMean: "f_PacketLengthMean",
+  };
+  for (const [k, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el && p[k] !== undefined) el.value = p[k];
+  }
+}
+
+function clearForm() {
+  document.querySelectorAll("aside input[type='number']").forEach(i => i.value = 0);
+}
+
+// ── Build feature dict from form ──────────────────────────────
+function buildFeatures() {
+  const ALL = [
+    "Destination Port","Flow Duration","Total Fwd Packets","Total Backward Packets",
+    "Total Length of Fwd Packets","Total Length of Bwd Packets","Fwd Packet Length Max",
+    "Fwd Packet Length Min","Fwd Packet Length Mean","Fwd Packet Length Std",
+    "Bwd Packet Length Max","Bwd Packet Length Min","Bwd Packet Length Mean",
+    "Bwd Packet Length Std","Flow Bytes/s","Flow Packets/s","Flow IAT Mean",
+    "Flow IAT Std","Flow IAT Max","Flow IAT Min","Fwd IAT Total","Fwd IAT Mean",
+    "Fwd IAT Std","Fwd IAT Max","Fwd IAT Min","Bwd IAT Total","Bwd IAT Mean",
+    "Bwd IAT Std","Bwd IAT Max","Bwd IAT Min","Fwd PSH Flags","Bwd PSH Flags",
+    "Fwd URG Flags","Bwd URG Flags","Fwd Header Length","Bwd Header Length",
+    "Fwd Packets/s","Bwd Packets/s","Min Packet Length","Max Packet Length",
+    "Packet Length Mean","Packet Length Std","Packet Length Variance","FIN Flag Count",
+    "SYN Flag Count","RST Flag Count","PSH Flag Count","ACK Flag Count","URG Flag Count",
+    "CWE Flag Count","ECE Flag Count","Down/Up Ratio","Average Packet Size",
+    "Avg Fwd Segment Size","Avg Bwd Segment Size","Fwd Header Length.1",
+    "Fwd Avg Bytes/Bulk","Fwd Avg Packets/Bulk","Fwd Avg Bulk Rate",
+    "Bwd Avg Bytes/Bulk","Bwd Avg Packets/Bulk","Bwd Avg Bulk Rate",
+    "Subflow Fwd Packets","Subflow Fwd Bytes","Subflow Bwd Packets","Subflow Bwd Bytes",
+    "Init_Win_bytes_forward","Init_Win_bytes_backward","act_data_pkt_fwd",
+    "min_seg_size_forward","Active Mean","Active Std","Active Max","Active Min",
+    "Idle Mean","Idle Std","Idle Max","Idle Min"
+  ];
+
+  const idMap = {
+    "Destination Port": "f_DestinationPort",
+    "Flow Duration": "f_FlowDuration",
+    "Total Fwd Packets": "f_TotalFwdPackets",
+    "Total Backward Packets": "f_TotalBwdPackets",
+    "Flow Bytes/s": "f_FlowBytess",
+    "Flow Packets/s": "f_FlowPacketss",
+    "Fwd Packets/s": "f_FwdPacketss",
+    "Bwd Packets/s": "f_BwdPacketss",
+    "SYN Flag Count": "f_SYNFlagCount",
+    "ACK Flag Count": "f_ACKFlagCount",
+    "PSH Flag Count": "f_PSHFlagCount",
+    "RST Flag Count": "f_RSTFlagCount",
+    "Average Packet Size": "f_AveragePktSize",
+    "Packet Length Mean": "f_PacketLengthMean",
+  };
+
+  const features = {};
+  for (const feat of ALL) {
+    const id = idMap[feat];
+    features[feat] = id ? parseFloat(document.getElementById(id)?.value || 0) : 0;
+  }
+  return features;
+}
+
+// ── Single predict ────────────────────────────────────────────
+async function predict() {
+  const btn = document.getElementById("predictBtn");
+  const spinner = document.getElementById("spinner");
+  btn.disabled = true;
+  spinner.classList.add("active");
+
+  try {
+    const resp = await fetch(`${API}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ features: buildFeatures() })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    showResult(data);
+    addHistory(data, "Manual");
+  } catch (e) {
+    alert("Error: " + e.message);
+  } finally {
+    btn.disabled = false;
+    spinner.classList.remove("active");
+  }
+}
+
+// ── Show result card ──────────────────────────────────────────
+function showResult(data) {
+  const card  = document.getElementById("resultCard");
+  const icon  = document.getElementById("resultIcon");
+  const label = document.getElementById("resultLabel");
+  const meta  = document.getElementById("resultMeta");
+  const pct   = document.getElementById("confPct");
+  const bar   = document.getElementById("confBar");
+
+  const isAttack = data.label === "ATTACK";
+  card.className  = `result-card ${isAttack ? "attack" : "benign"}`;
+  icon.className  = `result-icon ${isAttack ? "attack" : "benign"}`;
+  icon.textContent = isAttack ? "⚠️" : "🛡️";
+  label.className = `result-label ${isAttack ? "attack" : "benign"}`;
+  label.textContent = data.label;
+  meta.textContent  = `Confidence: ${data.confidence}%  ·  Single flow`;
+  pct.textContent   = data.confidence + "%";
+  bar.className     = `bar-fill ${isAttack ? "attack" : ""}`;
+  // Animate bar
+  setTimeout(() => bar.style.width = data.confidence + "%", 50);
+}
+
+// ── History ───────────────────────────────────────────────────
+function addHistory(data, source) {
+  stats.total++;
+  if (data.label === "ATTACK") stats.attack++; else stats.benign++;
+  document.getElementById("totalCount").textContent  = stats.total;
+  document.getElementById("benignCount").textContent = stats.benign;
+  document.getElementById("attackCount").textContent = stats.attack;
+
+  history.unshift({ ...data, source, time: new Date().toLocaleTimeString() });
+  renderHistory();
+}
+
+function renderHistory() {
+  const body = document.getElementById("historyBody");
+  if (!history.length) {
+    body.innerHTML = '<div class="empty">No detections yet.</div>';
+    return;
+  }
+  body.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th><th>Result</th><th>Confidence</th><th>Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${history.slice(0, 50).map(h => `
+          <tr>
+            <td>${h.time}</td>
+            <td><span class="badge ${h.label.toLowerCase()}">${h.label}</span></td>
+            <td>${h.confidence}%</td>
+            <td>${h.source}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+
+function clearHistory() {
+  history = [];
+  stats = { total: 0, benign: 0, attack: 0 };
+  document.getElementById("totalCount").textContent  = 0;
+  document.getElementById("benignCount").textContent = 0;
+  document.getElementById("attackCount").textContent = 0;
+  renderHistory();
+}
+
+// ── CSV Upload ────────────────────────────────────────────────
+function handleCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.trim().split("\n");
+    const headers = lines[0].split(",").map(h => h.trim());
+    csvRows = lines.slice(1).map(row => {
+      const vals = row.split(",");
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = parseFloat(vals[i]) || 0);
+      return obj;
+    });
+    document.querySelector(".upload-area p").textContent =
+      `✅ ${csvRows.length} rows loaded from "${file.name}"`;
+    document.getElementById("batchBtn").disabled = false;
+  };
+  reader.readAsText(file);
+}
+
+async function predictBatch() {
+  if (!csvRows.length) return;
+  const btn = document.getElementById("batchBtn");
+  const spinner = document.getElementById("spinner");
+  btn.disabled = true;
+  spinner.classList.add("active");
+
+  try {
+    const resp = await fetch(`${API}/predict-batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ records: csvRows })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    stats.total  += data.total;
+    stats.attack += data.attacks;
+    stats.benign += data.benign;
+    document.getElementById("totalCount").textContent  = stats.total;
+    document.getElementById("attackCount").textContent = stats.attack;
+    document.getElementById("benignCount").textContent = stats.benign;
+
+    data.results.slice(0, 10).forEach(r => {
+      if (!r.error) history.unshift({ ...r, source: "CSV", time: new Date().toLocaleTimeString() });
+    });
+    renderHistory();
+
+    showResult({
+      label: data.attacks > data.benign ? "ATTACK" : "BENIGN",
+      confidence: Math.round((Math.max(data.attacks, data.benign) / data.total) * 100)
+    });
+    alert(`Batch done!\nTotal: ${data.total}\nAttacks: ${data.attacks}\nBenign: ${data.benign}`);
+  } catch (e) {
+    alert("Error: " + e.message);
+  } finally {
+    btn.disabled = false;
+    spinner.classList.remove("active");
+  }
+}
+</script>
+</body>
+</html>
