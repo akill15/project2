@@ -763,5 +763,45 @@ async function predictBatch() {
   }
 }
 </script>
+<script>
+    async function sendTrafficData() {
+        // 1. Gathers values from your dashboard input boxes
+        const synFlag = parseFloat(document.getElementById('syn_flag').value) || 0;
+        const ackFlag = parseFloat(document.getElementById('ack_flag').value) || 0;
+        const pshFlag = parseFloat(document.getElementById('psh_flag').value) || 0;
+        const avgSize = parseFloat(document.getElementById('avg_packet_size').value) || 0;
+
+        // 2. Structures your 78 features for the machine learning model
+        const featureArray = [
+            synFlag, ackFlag, pshFlag, avgSize, 
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        ];
+
+        try {
+            // 👇 UPDATE THIS EXACT LINK BELOW TO YOUR LIVE RENDER URL 👇
+            const response = await fetch('https://enchancing-smart-grid-security.onrender.com/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ features: featureArray })
+            });
+
+            // 3. Receives response back from the cloud
+            const result = await response.json();
+            console.log("Prediction from cloud server:", result);
+
+            // 4. Updates your dashboard labels dynamically
+            document.getElementById('prediction_label').innerText = result.label;
+            document.getElementById('confidence_score').innerText = result.confidence + "%";
+
+        } catch (error) {
+            console.error("Could not connect to Render server:", error);
+        }
+    }
+</script>
 </body>
 </html>

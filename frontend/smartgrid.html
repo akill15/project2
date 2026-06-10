@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartGrid Security — Deep Learning Anomaly Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0e27;
+            --surface: #1a1f3a;
+            --border: #2d3e5f;
+            --accent: #00d4ff;
+            --danger: #ff4757;
+            --warning: #ffa502;
+            --safe: #26de81;
+            --text: #e8eef7;
+            --subtext: #7a8ba8;
+            --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+            --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg) 0%, #0f1428 100%);
+            color: var(--text);
+            font-family: var(--font);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ─── Header ─────────────────────────────────────────────────── */
+        header {
+            background: rgba(26, 31, 58, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), #00b8d4);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+
+        .header-status {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .indicator-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--safe);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ─── Main Container ────────────────────────────────────────── */
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        /* ─── Card Styles ────────────────────────────────────────────── */
+        .card {
+            background: rgba(26, 31, 58, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(0, 212, 255, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-icon {
+            font-size: 1.3rem;
+        }
+
+        /* ─── Input Section ────────────────────────────────────────────── */
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: var(--subtext);
+            margin-bottom: 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            background: rgba(10, 14, 39, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: var(--font-mono);
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(0, 212, 255, 0.05);
+            box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+        }
+
+        /* ─── Button Styles ────────────────────────────────────────────── */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #00b8d4);
+            color: var(--bg);
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(45, 62, 95, 0.5);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(45, 62, 95, 0.8);
+            border-color: var(--accent);
+        }
+
+        /* ─── Results Display ────────────────────────────────────────── */
+        .result-box {
+            background: rgba(10, 14, 39, 0.6);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(45, 62, 95, 0.3);
+        }
+
+        .result-row:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: var(--subtext);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-weight: 600;
+        }
+
+        /* ─── Risk Level Badges ────────────────────────────────────────── */
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-safe {
+            background: rgba(38, 222, 129, 0.2);
+            color: var(--safe);
+            border: 1px solid var(--safe);
+        }
+
+        .badge-warning {
+            background: rgba(255, 165, 2, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .badge-critical {
+            background: rgba(255, 71, 87, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        /* ─── Threat List ────────────────────────────────────────────── */
+        .threat-list {
+            list-style: none;
+            margin-top: 12px;
+        }
+
+        .threat-item {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: rgba(255, 71, 87, 0.1);
+            border-left: 3px solid var(--danger);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .threat-item::before {
+            content: "⚠";
+            font-size: 1rem;
+        }
+
+        /* ─── Recommendation Box ────────────────────────────────────────── */
+        .recommendation {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 184, 212, 0.05));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* ─── Real-time Dashboard ────────────────────────────────────────── */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: rgba(26, 31, 58, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: var(--font-mono);
+            margin: 8px 0;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--subtext);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ─── Chart Container ────────────────────────────────────────────── */
+        .chart-container {
+            grid-column: 1 / -1;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* ─── Loading State ────────────────────────────────────────────– */
+        .loading {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ─── Responsive ────────────────────────────────────────────────– */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            main {
+                padding: 20px 16px;
+            }
+
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            input {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ─── Header ─────────────────────────────────────────────────── -->
+    <header>
+        <div class="logo">
+            <div class="logo-icon">⚡</div>
+            <span>SmartGrid Security</span>
+        </div>
+        <div class="header-status">
+            <div class="status-indicator">
+                <div class="indicator-dot"></div>
+                <span>System Operational</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ─── Main Content ──────────────────────────────────────────────── -->
+    <main>
+        <!-- ─── Dashboard Metrics ────────────────────────────────────── -->
+        <div class="container">
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon">📊</span>
+                    Real-time Metrics
+                </div>
+                <div class="dashboard-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Anomaly Score</div>
+                        <div class="metric-value" id="anomaly-score">0.0000</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Risk Level</div>
+                        <div id="risk-badge" class="badge badge-safe">Safe</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">LSTM Score</div>
+                        <div class="metric-value" id="lstm-score">0.0000</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Reconstruction Error</div>
+                        <div class="metric-value" id="reconstruction-error">0.0000</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Input Section ────────────────────────────────────────── -->
+        <div class="container">
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon">⚙️</span>
+                    Grid Parameters
+                </div>
+
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label for="voltage">Voltage (V)</label>
+                        <input type="number" id="voltage" value="230" step="0.1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="current">Current (A)</label>
+                        <input type="number" id="current" value="45" step="0.1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="frequency">Frequency (Hz)</label>
+                        <input type="number" id="frequency" value="50" step="0.01" />
+                    </div>
+                    <div class="input-group">
+                        <label for="powerFactor">Power Factor</label>
+                        <input type="number" id="powerFactor" value="0.98" step="0.01" min="0" max="1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="activePower">Active Power (kW)</label>
+                        <input type="number" id="activePower" value="10.5" step="0.1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="reactivePower">Reactive Power (kVAR)</label>
+                        <input type="number" id="reactivePower" value="2.1" step="0.1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="apparentPower">Apparent Power (kVA)</label>
+                        <input type="number" id="apparentPower" value="10.7" step="0.1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="harmonicDistortion">Harmonic Distortion (%)</label>
+                        <input type="number" id="harmonicDistortion" value="3.2" step="0.1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="phaseAngle">Phase Angle (°)</label>
+                        <input type="number" id="phaseAngle" value="11.3" step="0.1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="loadDemand">Load Demand (%)</label>
+                        <input type="number" id="loadDemand" value="85" step="1" min="0" max="100" />
+                    </div>
+                    <div class="input-group">
+                        <label for="generationOutput">Generation Output (%)</label>
+                        <input type="number" id="generationOutput" value="90" step="1" min="0" max="100" />
+                    </div>
+                    <div class="input-group">
+                        <label for="netFlow">Net Flow (MW)</label>
+                        <input type="number" id="netFlow" value="5" step="0.1" />
+                    </div>
+                    <div class="input-group">
+                        <label for="temperature">Temperature (°C)</label>
+                        <input type="number" id="temperature" value="35.5" step="0.1" />
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="analyzeGrid()">
+                        <span>🔍</span> Analyze
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetInputs()">
+                        <span>↻</span> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Results Section ───────────────────────────────────────── -->
+        <div class="container">
+            <div class="card full-width" id="results-container" style="display: none;">
+                <div class="card-title">
+                    <span class="card-icon">📈</span>
+                    Analysis Results
+                </div>
+
+                <div class="result-box">
+                    <div class="result-row">
+                        <span class="result-label">Timestamp</span>
+                        <span class="result-value" id="result-timestamp">-</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Combined Anomaly Score</span>
+                        <span class="result-value" id="result-anomaly-score">-</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">LSTM Prediction Score</span>
+                        <span class="result-value" id="result-lstm-score">-</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Reconstruction Error</span>
+                        <span class="result-value" id="result-reconstruction-error">-</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Risk Assessment</span>
+                        <span id="result-risk-badge" class="badge badge-safe">Safe</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Anomaly Detected</span>
+                        <span class="result-value" id="result-anomaly-detected">No</span>
+                    </div>
+                </div>
+
+                <div id="threats-container" style="display: none; margin-top: 16px;">
+                    <div class="result-label" style="margin-bottom: 12px;">🚨 Identified Threats:</div>
+                    <ul class="threat-list" id="threats-list"></ul>
+                </div>
+
+                <div class="recommendation" id="recommendation"></div>
+            </div>
+        </div>
+
+        <!-- ─── System Information ────────────────────────────────────– -->
+        <div class="container">
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-icon">ℹ️</span>
+                    System Information
+                </div>
+                <div class="result-box">
+                    <div class="result-row">
+                        <span class="result-label">Deep Learning Models</span>
+                        <span class="result-value">LSTM + Autoencoder</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Detection Method</span>
+                        <span class="result-value">Ensemble Anomaly Detection</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Data Preprocessing</span>
+                        <span class="result-value">Feature Scaling + Normalization</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">API Status</span>
+                        <span class="result-value" style="color: var(--safe);">✓ Connected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ─── JavaScript ────────────────────────────────────────────────– -->
+    <script>
+        const API_URL = "http://localhost:5000";
+
+        async function analyzeGrid() {
+            const voltage = parseFloat(document.getElementById("voltage").value);
+            const current = parseFloat(document.getElementById("current").value);
+            const frequency = parseFloat(document.getElementById("frequency").value);
+            const powerFactor = parseFloat(document.getElementById("powerFactor").value);
+            const activePower = parseFloat(document.getElementById("activePower").value);
+            const reactivePower = parseFloat(document.getElementById("reactivePower").value);
+            const apparentPower = parseFloat(document.getElementById("apparentPower").value);
+            const harmonicDistortion = parseFloat(document.getElementById("harmonicDistortion").value);
+            const phaseAngle = parseFloat(document.getElementById("phaseAngle").value);
+            const loadDemand = parseFloat(document.getElementById("loadDemand").value);
+            const generationOutput = parseFloat(document.getElementById("generationOutput").value);
+            const netFlow = parseFloat(document.getElementById("netFlow").value);
+            const temperature = parseFloat(document.getElementById("temperature").value);
+
+            const payload = {
+                voltage,
+                current,
+                frequency,
+                power_factor: powerFactor,
+                active_power: activePower,
+                reactive_power: reactivePower,
+                apparent_power: apparentPower,
+                harmonic_distortion: harmonicDistortion,
+                phase_angle: phaseAngle,
+                load_demand: loadDemand,
+                generation_output: generationOutput,
+                net_flow: netFlow,
+                temperature
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/detect-anomaly`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                alert(`Error: ${error.message}\nMake sure the backend is running on ${API_URL}`);
+                console.error("Error:", error);
+            }
+        }
+
+        function displayResults(result) {
+            const resultsContainer = document.getElementById("results-container");
+            
+            // Update metrics
+            document.getElementById("anomaly-score").textContent = result.anomaly_score.toFixed(4);
+            document.getElementById("lstm-score").textContent = result.lstm_score.toFixed(4);
+            document.getElementById("reconstruction-error").textContent = result.reconstruction_error.toFixed(4);
+
+            // Update risk badge
+            const riskBadge = document.getElementById("result-risk-badge");
+            riskBadge.textContent = result.risk_level.toUpperCase();
+            riskBadge.className = `badge badge-${result.risk_level}`;
+
+            // Update header badge
+            const headerBadge = document.getElementById("risk-badge");
+            headerBadge.textContent = result.risk_level.toUpperCase();
+            headerBadge.className = `badge badge-${result.risk_level}`;
+
+            // Update results
+            document.getElementById("result-timestamp").textContent = new Date(result.timestamp).toLocaleTimeString();
+            document.getElementById("result-anomaly-score").textContent = result.anomaly_score.toFixed(4);
+            document.getElementById("result-lstm-score").textContent = result.lstm_score.toFixed(4);
+            document.getElementById("result-reconstruction-error").textContent = result.reconstruction_error.toFixed(4);
+            document.getElementById("result-anomaly-detected").textContent = result.anomaly_detected ? "Yes ⚠️" : "No ✓";
+
+            // Update threats
+            const threatsContainer = document.getElementById("threats-container");
+            const threatsList = document.getElementById("threats-list");
+            
+            if (result.threats && result.threats.length > 0) {
+                threatsContainer.style.display = "block";
+                threatsList.innerHTML = result.threats.map(threat => `<li class="threat-item">${threat}</li>`).join("");
+            } else {
+                threatsContainer.style.display = "none";
+            }
+
+            // Update recommendation
+            document.getElementById("recommendation").textContent = "💡 " + result.recommended_action;
+
+            // Show results container
+            resultsContainer.style.display = "block";
+            resultsContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+
+        function resetInputs() {
+            document.getElementById("voltage").value = "230";
+            document.getElementById("current").value = "45";
+            document.getElementById("frequency").value = "50";
+            document.getElementById("powerFactor").value = "0.98";
+            document.getElementById("activePower").value = "10.5";
+            document.getElementById("reactivePower").value = "2.1";
+            document.getElementById("apparentPower").value = "10.7";
+            document.getElementById("harmonicDistortion").value = "3.2";
+            document.getElementById("phaseAngle").value = "11.3";
+            document.getElementById("loadDemand").value = "85";
+            document.getElementById("generationOutput").value = "90";
+            document.getElementById("netFlow").value = "5";
+            document.getElementById("temperature").value = "35.5";
+            document.getElementById("results-container").style.display = "none";
+        }
+
+        // Initialize on page load
+        document.addEventListener("DOMContentLoaded", () => {
+            console.log("SmartGrid Security Dashboard initialized");
+        });
+    </script>
+</body>
+</html>
